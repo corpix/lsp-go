@@ -4,7 +4,7 @@
 
 ;; Author: Vibhav Pant <vibhavp@gmail.com>
 ;; Version: 1.0
-;; Package-Requires: ((lsp-mode "3.0"))
+;; Package-Requires: ((lsp-mode "6.0"))
 ;; Keywords: go, golang
 ;; URL: https://github.com/emacs-lsp/lsp-go
 
@@ -62,7 +62,7 @@ defaults to half of your CPU cores."
 (define-inline lsp-go--bool-to-json (val)
   (inline-quote (if ,val t :json-false)))
 
-(defun lsp-go--make-init-options (_)
+(defun lsp-go--make-init-options ()
   `(:funcSnippetEnabled ,(lsp-go--bool-to-json lsp-go-func-snippet-enabled)
                         :gocodeCompletionEnabled ,(lsp-go--bool-to-json lsp-go-gocode-completion-enabled)
                         :formatTool ,lsp-go-format-tool
@@ -70,13 +70,17 @@ defaults to half of your CPU cores."
                         :maxParallelism ,lsp-go-max-parallelism
                         :useBinaryPkgCache ,lsp-go-use-binary-pkg-cache))
 
-(lsp-define-stdio-client lsp-go "go" #'(lambda () default-directory)
-                         `(,lsp-go-executable-path
-                           "-mode=stdio"
-                           ,@lsp-go-language-server-flags)
-                         :ignore-regexps
-                         '("^langserver-go: reading on stdin, writing on stdout$")
-                         :extra-init-params #'lsp-go--make-init-options)
+(defun lsp-go--ls-command ()
+  "LS startup command."
+  `(,lsp-go-executable-path "-mode=stdio" ,@lsp-go-language-server-flags))
+
+(lsp-register-client
+ (make-lsp-client
+  :new-connection (lsp-stdio-connection 'lsp-go--ls-command)
+  :major-modes '(go-mode)
+  :server-id 'go-langserver
+  :ignore-regexps '("^langserver-go: reading on stdin, writing on stdout$")
+  :initialization-options #'lsp-go--make-init-options))
 
 (provide 'lsp-go)
 ;;; lsp-go.el ends here
